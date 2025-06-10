@@ -1,0 +1,23 @@
+{
+"development": {
+"username": "chatapp",
+"password": "secret",
+"database": "chatapp_dev",
+"host": "127.0.0.1",
+"dialect": "postgres"
+},
+"test": {
+"username": "chatapp",
+"password": "secret",
+"database": "chatapp_test",
+"host": "127.0.0.1",
+"dialect": "postgres"
+},
+"production": {
+"username": "chatapp",
+"password": "secret",
+"database": "chatapp_prod",
+"host": "127.0.0.1",
+"dialect": "postgres"
+}
+}
