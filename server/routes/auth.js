@@ -1,29 +1,39 @@
 // server/routes/auth.js
 const express = require('express');
 const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
 const { User } = require('../models');
+const { validateRegister, validateLogin } = require('../helpers/validation');
+const { generateToken } = require('../helpers/jwt');
 
 const router = express.Router();
 
 // POST /auth/register
 router.post('/register', async (req, res) => {
-  const { username, password, firstName, lastName, email } = req.body;
-  if (!username || !password || !firstName || !lastName || !email) {
-    return res.status(400).json({ message: 'All fields are required' });
+  // 1) Validate payload
+  const { error, value } = validateRegister(req.body);
+  if (error) {
+    return res.status(400).json({
+      message: 'Validation error',
+      details: error.details.map(d => d.message),
+    });
   }
 
+  const { username, password, firstName, lastName, email } = value;
+
   try {
-    if (await User.findOne({ where: { username } })) {
-      return res.status(400).json({ message: 'Username already taken' });
+    // 2) Check duplicate
+    const existing = await User.findOne({ where: { username } });
+    if (existing) {
+      return res.status(409).json({ message: 'Username already taken' });
     }
 
+    // 3) Hash & create
     const passwordHash = await bcrypt.hash(password, 10);
     const user = await User.create({ username, passwordHash, firstName, lastName, email });
 
-    // Strip out the hash before sending
-    const { passwordHash: _, ...safeUser } = user.toJSON();
-    res.status(201).json(safeUser);
+    const safe = user.toJSON();
+    delete safe.passwordHash;
+    res.status(201).json(safe);
   } catch (err) {
     console.error('Registration error', err);
     res.status(500).json({ message: 'Server error' });
@@ -32,18 +42,28 @@ router.post('/register', async (req, res) => {
 
 // POST /auth/login
 router.post('/login', async (req, res) => {
-  const { username, password } = req.body;
-  if (!username || !password) {
-    return res.status(400).json({ message: 'Username and password required' });
+  const { error, value } = validateLogin(req.body);
+  if (error) {
+    return res.status(400).json({
+      message: 'Validation error',
+      details: error.details.map(d => d.message),
+    });
   }
+
+  const { username, password } = value;
 
   try {
     const user = await User.findOne({ where: { username } });
-    if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
+    if (!user) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    const match = await bcrypt.compare(password, user.passwordHash);
+    if (!match) {
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
+
+    const token = generateToken({ id: user.id });
     res.json({ token });
   } catch (err) {
     console.error('Login error', err);

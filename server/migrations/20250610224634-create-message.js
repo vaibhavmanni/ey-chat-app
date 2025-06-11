@@ -4,10 +4,10 @@ module.exports = {
   async up(queryInterface, Sequelize) {
     await queryInterface.createTable('Messages', {
       id: {
-        allowNull: false,
-        autoIncrement: true,
+        type: Sequelize.UUID,
+        defaultValue: Sequelize.literal('uuid_generate_v4()'),
         primaryKey: true,
-        type: Sequelize.INTEGER
+        allowNull: false
       },
       senderId: {
         type: Sequelize.UUID

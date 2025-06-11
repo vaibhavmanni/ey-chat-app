@@ -4,6 +4,8 @@ const express = require('express');
 const cors = require('cors');
 const db = require('./models');
 const authRouter = require('./routes/auth');
+const usersRouter = require('./routes/users');
+const convRouter  = require('./routes/conversations');
 const authMiddleware = require('./middleware/auth');
 
 const PORT = process.env.PORT || 3000;
@@ -24,6 +26,9 @@ async function start() {
 
   // Public auth routes
   app.use('/auth', authRouter);
+
+  app.use('/users', usersRouter);
+  app.use('/conversations', convRouter);
 
   // Example protected endpoint
   app.get('/me', authMiddleware, (req, res) => {
