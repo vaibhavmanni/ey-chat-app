@@ -1,9 +1,12 @@
+// server/index.js
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const db = require('./models');   // loads models/index.js
+const db = require('./models');
+const authRouter = require('./routes/auth');
+const authMiddleware = require('./middleware/auth');
 
-const PORT = process.env.PORT || 4000;
+const PORT = process.env.PORT || 3000;
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
 
 async function start() {
@@ -11,7 +14,7 @@ async function start() {
     await db.sequelize.authenticate();
     console.log('✅ Database connected');
   } catch (err) {
-    console.error('❌ DB connection error:', err);
+    console.error('❌ DB connection failed:', err);
     process.exit(1);
   }
 
@@ -19,10 +22,14 @@ async function start() {
   app.use(cors({ origin: CLIENT_URL, credentials: true }));
   app.use(express.json());
 
-  // Health check
-  app.get('/', (_req, res) => res.send('Chat API running 🚀'));
+  // Public auth routes
+  app.use('/auth', authRouter);
 
-  // TODO: mount your /auth, /users, /messages routers here
+  // Example protected endpoint
+  app.get('/me', authMiddleware, (req, res) => {
+    const { passwordHash, ...userData } = req.user.toJSON();
+    res.json(userData);
+  });
 
   app.listen(PORT, () =>
     console.log(`🚀 Server listening on http://localhost:${PORT}`)
