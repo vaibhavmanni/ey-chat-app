@@ -1,44 +1,14 @@
 // server/index.js
-require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
-const db = require('./models');
-const authRouter = require('./routes/auth');
-const usersRouter = require('./routes/users');
-const convRouter  = require('./routes/conversations');
-const authMiddleware = require('./middleware/auth');
-
-const PORT = process.env.PORT || 3000;
-const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
+const { createApp, db } = require('./app');
+const PORT = process.env.PORT || 4000;
 
 async function start() {
-  try {
-    await db.sequelize.authenticate();
-    console.log('✅ Database connected');
-  } catch (err) {
-    console.error('❌ DB connection failed:', err);
-    process.exit(1);
-  }
-
-  const app = express();
-  app.use(cors({ origin: CLIENT_URL, credentials: true }));
-  app.use(express.json());
-
-  // Public auth routes
-  app.use('/auth', authRouter);
-
-  app.use('/users', usersRouter);
-  app.use('/conversations', convRouter);
-
-  // Example protected endpoint
-  app.get('/me', authMiddleware, (req, res) => {
-    const { passwordHash, ...userData } = req.user.toJSON();
-    res.json(userData);
-  });
-
+  await db.sequelize.authenticate();
+  console.log('✅ Database connected');
+  const app = createApp();
   app.listen(PORT, () =>
     console.log(`🚀 Server listening on http://localhost:${PORT}`)
   );
 }
 
-start();
+if (process.env.NODE_ENV !== 'test') start();
