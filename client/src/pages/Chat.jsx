@@ -14,7 +14,7 @@ import Message from '../components/Message';
 const PAGE_SIZE = 30;
 
 export default function Chat({ selectedUserId }) {
-  const { user, token, logout } = useAuth();
+  const { user, token } = useAuth();
   const [messages, setMessages] = useState([]);
   const [newContent, setNewContent] = useState('');
   const [hasMore, setHasMore] = useState(true);
@@ -152,34 +152,6 @@ export default function Chat({ selectedUserId }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* Header */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: '8px 16px',
-        borderBottom: '1px solid #ddd',
-        backgroundColor: '#f9f9f9'
-      }}>
-        <div>Chat</div>
-        <div>
-          <span style={{ marginRight: 12 }}>{user.username}</span>
-          <button
-            onClick={logout}
-            style={{
-              padding: '4px 8px',
-              border: 'none',
-              backgroundColor: '#e74c3c',
-              color: '#fff',
-              borderRadius: 4,
-              cursor: 'pointer'
-            }}
-          >
-            Sign Out
-          </button>
-        </div>
-      </div>
-
       {/* Messages */}
       <div
         ref={containerRef}
