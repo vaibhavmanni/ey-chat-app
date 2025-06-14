@@ -2,7 +2,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const db = require('./models');
+
 const authRouter = require('./routes/auth');
 const usersRouter = require('./routes/users');
 const convRouter  = require('./routes/conversations');
@@ -18,11 +18,11 @@ function createApp() {
   app.use('/conversations', convRouter);
 
   app.get('/me', authMiddleware, (req, res) => {
-    const { passwordHash, ...u } = req.user.toJSON();
-    res.json(u);
+    const { passwordHash, ...user } = req.user.toJSON();
+    res.json(user);
   });
 
   return app;
 }
 
-module.exports = { createApp, db };
+module.exports = { createApp };
