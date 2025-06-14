@@ -1,14 +1,19 @@
 // server/index.js
 require('dotenv').config();
-const http = require('http');
+const fs    = require('fs');
+const http  = require('http');
+const https = require('https');
 const { createApp } = require('./app');
-const db = require('./models');
+const db      = require('./models');
 const setupSockets = require('./socket');
 
-const PORT = process.env.PORT || 4000;
+const PORT_HTTP  = process.env.PORT      || 4000;
+const PORT_HTTPS = process.env.PORT_HTTPS || 4001;
+const KEY_PATH   = process.env.SSL_KEY_PATH  || './ssl/key.pem';
+const CERT_PATH  = process.env.SSL_CERT_PATH || './ssl/cert.pem';
 
 async function start() {
-  // 1) Connect to DB
+  // 1) DB connection
   try {
     await db.sequelize.authenticate();
     console.log('✅ Database connected');
@@ -17,21 +22,30 @@ async function start() {
     process.exit(1);
   }
 
-  // 2) Create Express app
+  // 2) Create the Express app
   const app = createApp();
-  const server = http.createServer(app);
 
-  // 3) Attach Socket.IO
-  setupSockets(server);
+  // 3) Create HTTP & HTTPS servers
+  const httpServer  = http.createServer(app);
+  const sslOptions  = {
+    key:  fs.readFileSync(KEY_PATH),
+    cert: fs.readFileSync(CERT_PATH),
+  };
+  const httpsServer = https.createServer(sslOptions, app);
 
-  // 4) Listen
-  server.listen(PORT, () =>
-    console.log(`🚀 Server listening on http://localhost:${PORT}`)
-  );
+  // 4) Attach socket.io to the HTTPS server
+  setupSockets(httpsServer);
+
+  // 5) Listen
+  httpServer.listen(PORT_HTTP, () => {
+    console.log(`→ HTTP  listening on http://localhost:${PORT_HTTP}`);
+  });
+  httpsServer.listen(PORT_HTTPS, () => {
+    console.log(`→ HTTPS listening on https://localhost:${PORT_HTTPS}`);
+  });
 }
 
 // Only start if not testing
 if (process.env.NODE_ENV !== 'test') start();
 
-// Optional export for tests
 module.exports = { start };
