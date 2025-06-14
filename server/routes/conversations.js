@@ -7,30 +7,34 @@ const { validateUUID } = require('../helpers/validation');
 
 const router = express.Router();
 
+// GET /conversations/:userId?before=<ISO>&limit=<n>
 router.get('/:userId', authMiddleware, async (req, res) => {
   const { userId: otherUserId } = req.params;
+  const { before, limit = 50 } = req.query;
+  const myId = req.user.id;
 
-  // 1) Validate it's a UUID
-  const { error: idError } = validateUUID(otherUserId);
-  if (idError) {
-    return res.status(400).json({ message: 'Invalid userId parameter' });
+  // validate UUID
+  const { error } = validateUUID(otherUserId);
+  if (error) return res.status(400).json({ message: 'Invalid userId' });
+
+  // build where-clause
+  const base = {
+    [Op.or]: [
+      { senderId: myId, receiverId: otherUserId },
+      { senderId: otherUserId, receiverId: myId },
+    ],
+  };
+  if (before) {
+    base.createdAt = { [Op.lt]: new Date(before) };
   }
 
-  const myId = req.user.id; // this is also a UUID
-
   try {
-    // 2) Query last 50 messages
     const messages = await Message.findAll({
-      where: {
-        [Op.or]: [
-          { senderId: myId,    receiverId: otherUserId },
-          { senderId: otherUserId, receiverId: myId }
-        ]
-      },
+      where: base,
       order: [['createdAt', 'DESC']],
-      limit: 50
+      limit: parseInt(limit, 10),
     });
-
+    // reverse so client sees oldest first
     res.json(messages.reverse());
   } catch (err) {
     console.error(`GET /conversations/${otherUserId} error`, err);
