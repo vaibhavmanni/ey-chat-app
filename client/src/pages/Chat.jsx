@@ -22,22 +22,37 @@ export default function Chat({ selectedUserId }) {
 
   const containerRef = useRef(null);
   const firstLoadRef = useRef(true);
+  const prevLengthRef = useRef(0);
 
-  // 0) Don’t render until we have both user & peer
+  // Don’t render until we know who’s chatting
   if (!user || !selectedUserId) {
     return <div style={{ padding: 16 }}>Loading chat…</div>;
   }
 
-  // 1) After messages mount for the first time, scroll to bottom
+  // 1) Unified scroll-effect:
+  //   - On first load → jump to bottom
+  //   - On any new message (send or receive) → jump to bottom
+  //   - Skip during older-message loads
   useLayoutEffect(() => {
+    const c = containerRef.current;
+    if (!c) return;
+
     if (firstLoadRef.current && messages.length > 0) {
-      const c = containerRef.current;
+      // initial load
       c.scrollTop = c.scrollHeight;
       firstLoadRef.current = false;
+    } else if (
+      messages.length > prevLengthRef.current &&
+      !loadingOlder
+    ) {
+      // new message arrived
+      c.scrollTop = c.scrollHeight;
     }
-  }, [messages]);
 
-  // 2) Initial fetch of most recent messages
+    prevLengthRef.current = messages.length;
+  }, [messages, loadingOlder]);
+
+  // 2) Fetch most recent messages
   useEffect(() => {
     let cancelled = false;
     async function fetchRecent() {
@@ -57,7 +72,7 @@ export default function Chat({ selectedUserId }) {
     return () => { cancelled = true; };
   }, [selectedUserId]);
 
-  // 3) Load older when scrolling to top
+  // 3) Load older when scroll-to-top
   const loadOlder = useCallback(async () => {
     if (!hasMore || loadingOlder || messages.length === 0) return;
 
@@ -75,7 +90,7 @@ export default function Chat({ selectedUserId }) {
       setMessages(prev => [...older, ...prev]);
       setHasMore(older.length === PAGE_SIZE);
 
-      // preserve scroll position after prepend
+      // preserve scroll position after prepending
       setTimeout(() => {
         const newHeight = container.scrollHeight;
         container.scrollTop = newHeight - prevHeight;
@@ -90,31 +105,27 @@ export default function Chat({ selectedUserId }) {
   // 4) Attach scroll listener
   useEffect(() => {
     const container = containerRef.current;
-    const handler = () => {
+    if (!container) return;
+    const onScroll = () => {
       if (container.scrollTop < 50) {
         loadOlder();
       }
     };
-    container.addEventListener('scroll', handler);
-    return () => container.removeEventListener('scroll', handler);
+    container.addEventListener('scroll', onScroll);
+    return () => container.removeEventListener('scroll', onScroll);
   }, [loadOlder]);
 
-  // 5) Socket listener → append + scroll to bottom
+  // 5) Socket listener → just append; scroll is handled by layout-effect
   useEffect(() => {
     const socket = initSocket(token);
     const handler = msg => {
       const isRelevant =
         (msg.senderId === selectedUserId && msg.receiverId === user.id) ||
         (msg.senderId === user.id && msg.receiverId === selectedUserId);
-      if (!isRelevant) return;
-
-      setMessages(prev => [...prev, msg]);
-      setTimeout(() => {
-        const c = containerRef.current;
-        c.scrollTop = c.scrollHeight;
-      }, 0);
+      if (isRelevant) {
+        setMessages(prev => [...prev, msg]);
+      }
     };
-
     socket.on('message:receive', handler);
     return () => {
       socket.off('message:receive', handler);
@@ -122,7 +133,7 @@ export default function Chat({ selectedUserId }) {
     };
   }, [selectedUserId, token, user.id]);
 
-  // 6) Send handler → optimistic UI + scroll
+  // 6) Send handler → optimistic UI; scroll via layout-effect
   const handleSend = () => {
     const content = newContent.trim();
     if (!content) return;
@@ -137,11 +148,6 @@ export default function Chat({ selectedUserId }) {
     setMessages(prev => [...prev, optimistic]);
     sendMessage({ to: selectedUserId, content });
     setNewContent('');
-
-    setTimeout(() => {
-      const c = containerRef.current;
-      c.scrollTop = c.scrollHeight;
-    }, 0);
   };
 
   return (
