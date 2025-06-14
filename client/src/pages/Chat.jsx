@@ -15,13 +15,13 @@ const PAGE_SIZE = 30;
 
 export default function Chat({ selectedUserId }) {
   const { user, token } = useAuth();
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages]     = useState([]);
   const [newContent, setNewContent] = useState('');
-  const [hasMore, setHasMore] = useState(true);
+  const [hasMore, setHasMore]       = useState(true);
   const [loadingOlder, setLoadingOlder] = useState(false);
 
-  const containerRef = useRef(null);
-  const firstLoadRef = useRef(true);
+  const containerRef  = useRef(null);
+  const firstLoadRef  = useRef(true);
   const prevLengthRef = useRef(0);
 
   // Don’t render until we know who’s chatting
@@ -29,10 +29,7 @@ export default function Chat({ selectedUserId }) {
     return <div style={{ padding: 16 }}>Loading chat…</div>;
   }
 
-  // 1) Unified scroll-effect:
-  //   - On first load → jump to bottom
-  //   - On any new message (send or receive) → jump to bottom
-  //   - Skip during older-message loads
+  // 1) Scroll-to-bottom logic (initial load + new messages only)
   useLayoutEffect(() => {
     const c = containerRef.current;
     if (!c) return;
@@ -45,14 +42,14 @@ export default function Chat({ selectedUserId }) {
       messages.length > prevLengthRef.current &&
       !loadingOlder
     ) {
-      // new message arrived
+      // new message at bottom
       c.scrollTop = c.scrollHeight;
     }
 
     prevLengthRef.current = messages.length;
   }, [messages, loadingOlder]);
 
-  // 2) Fetch most recent messages
+  // 2) Fetch the most recent messages on user switch
   useEffect(() => {
     let cancelled = false;
     async function fetchRecent() {
@@ -72,29 +69,34 @@ export default function Chat({ selectedUserId }) {
     return () => { cancelled = true; };
   }, [selectedUserId]);
 
-  // 3) Load older when scroll-to-top
+  // 3) Load older when scrolled to top
   const loadOlder = useCallback(async () => {
     if (!hasMore || loadingOlder || messages.length === 0) return;
 
-    setLoadingOlder(true);
     const container = containerRef.current;
-    const prevHeight = container.scrollHeight;
-    const oldest = messages[0];
+    const prevScrollHeight = container.scrollHeight;
+    const prevScrollTop    = container.scrollTop;
 
+    setLoadingOlder(true);
     try {
       const res = await api.get(
         `/conversations/${selectedUserId}`,
-        { params: { before: oldest.createdAt, limit: PAGE_SIZE } }
+        {
+          params: {
+            before: messages[0].createdAt,
+            limit: PAGE_SIZE
+          }
+        }
       );
       const older = res.data;
       setMessages(prev => [...older, ...prev]);
       setHasMore(older.length === PAGE_SIZE);
 
-      // preserve scroll position after prepending
-      setTimeout(() => {
-        const newHeight = container.scrollHeight;
-        container.scrollTop = newHeight - prevHeight;
-      }, 0);
+      // restore the user's position
+      requestAnimationFrame(() => {
+        const newScrollHeight = container.scrollHeight;
+        container.scrollTop = newScrollHeight - prevScrollHeight + prevScrollTop;
+      });
     } catch (err) {
       console.error('Error loading older messages', err);
     } finally {
@@ -115,7 +117,7 @@ export default function Chat({ selectedUserId }) {
     return () => container.removeEventListener('scroll', onScroll);
   }, [loadOlder]);
 
-  // 5) Socket listener → just append; scroll is handled by layout-effect
+  // 5) Socket listener → just append; scroll is handled by useLayoutEffect
   useEffect(() => {
     const socket = initSocket(token);
     const handler = msg => {
@@ -133,11 +135,10 @@ export default function Chat({ selectedUserId }) {
     };
   }, [selectedUserId, token, user.id]);
 
-  // 6) Send handler → optimistic UI; scroll via layout-effect
+  // 6) Send handler → optimistic UI + scroll via layout-effect
   const handleSend = () => {
     const content = newContent.trim();
     if (!content) return;
-
     const optimistic = {
       id: `temp-${Date.now()}`,
       senderId: user.id,
@@ -170,7 +171,6 @@ export default function Chat({ selectedUserId }) {
             Loading older messages…
           </div>
         )}
-
         {messages.map(m => (
           <Message key={m.id} message={m} currentUserId={user.id} />
         ))}
