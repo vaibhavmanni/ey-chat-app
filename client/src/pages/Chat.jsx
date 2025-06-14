@@ -15,9 +15,9 @@ const PAGE_SIZE = 30;
 
 export default function Chat({ selectedUserId }) {
   const { user, token } = useAuth();
-  const [messages, setMessages]     = useState([]);
-  const [newContent, setNewContent] = useState('');
-  const [hasMore, setHasMore]       = useState(true);
+  const [messages, setMessages]       = useState([]);
+  const [newContent, setNewContent]   = useState('');
+  const [hasMore, setHasMore]         = useState(true);
   const [loadingOlder, setLoadingOlder] = useState(false);
 
   const containerRef  = useRef(null);
@@ -33,23 +33,16 @@ export default function Chat({ selectedUserId }) {
   useLayoutEffect(() => {
     const c = containerRef.current;
     if (!c) return;
-
     if (firstLoadRef.current && messages.length > 0) {
-      // initial load
       c.scrollTop = c.scrollHeight;
       firstLoadRef.current = false;
-    } else if (
-      messages.length > prevLengthRef.current &&
-      !loadingOlder
-    ) {
-      // new message at bottom
+    } else if (messages.length > prevLengthRef.current && !loadingOlder) {
       c.scrollTop = c.scrollHeight;
     }
-
     prevLengthRef.current = messages.length;
   }, [messages, loadingOlder]);
 
-  // 2) Fetch the most recent messages on user switch
+  // 2) Fetch recent on user switch
   useEffect(() => {
     let cancelled = false;
     async function fetchRecent() {
@@ -61,21 +54,24 @@ export default function Chat({ selectedUserId }) {
         if (cancelled) return;
         setMessages(res.data);
         setHasMore(res.data.length === PAGE_SIZE);
+
+        // reset our first-load logic so we scroll to bottom
+        firstLoadRef.current = true;
       } catch (err) {
-        console.error('Error fetching messages', err);
+        console.error(err);
       }
     }
     fetchRecent();
     return () => { cancelled = true; };
   }, [selectedUserId]);
 
-  // 3) Load older when scrolled to top
+  // 3) Load older on scroll-to-top
   const loadOlder = useCallback(async () => {
     if (!hasMore || loadingOlder || messages.length === 0) return;
 
     const container = containerRef.current;
-    const prevScrollHeight = container.scrollHeight;
-    const prevScrollTop    = container.scrollTop;
+    const prevHeight = container.scrollHeight;
+    const prevTop    = container.scrollTop;
 
     setLoadingOlder(true);
     try {
@@ -88,57 +84,61 @@ export default function Chat({ selectedUserId }) {
           }
         }
       );
-      const older = res.data;
-      setMessages(prev => [...older, ...prev]);
-      setHasMore(older.length === PAGE_SIZE);
+      setMessages(prev => [...res.data, ...prev]);
+      setHasMore(res.data.length === PAGE_SIZE);
 
-      // restore the user's position
+      // restore scroll to where you were
       requestAnimationFrame(() => {
-        const newScrollHeight = container.scrollHeight;
-        container.scrollTop = newScrollHeight - prevScrollHeight + prevScrollTop;
+        const newHeight = container.scrollHeight;
+        container.scrollTop = newHeight - prevHeight + prevTop;
       });
     } catch (err) {
-      console.error('Error loading older messages', err);
+      console.error(err);
     } finally {
       setLoadingOlder(false);
     }
   }, [hasMore, loadingOlder, messages, selectedUserId]);
 
-  // 4) Attach scroll listener
   useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-    const onScroll = () => {
-      if (container.scrollTop < 50) {
-        loadOlder();
-      }
-    };
-    container.addEventListener('scroll', onScroll);
-    return () => container.removeEventListener('scroll', onScroll);
+    const c = containerRef.current;
+    if (!c) return;
+    const onScroll = () => { if (c.scrollTop < 50) loadOlder(); };
+    c.addEventListener('scroll', onScroll);
+    return () => c.removeEventListener('scroll', onScroll);
   }, [loadOlder]);
 
-  // 5) Socket listener → just append; scroll is handled by useLayoutEffect
+  // 4) ONE-TIME socket hookup (no disconnect on user switch)
   useEffect(() => {
     const socket = initSocket(token);
-    const handler = msg => {
-      const isRelevant =
-        (msg.senderId === selectedUserId && msg.receiverId === user.id) ||
-        (msg.senderId === user.id && msg.receiverId === selectedUserId);
-      if (isRelevant) {
-        setMessages(prev => [...prev, msg]);
-      }
+
+    const handler = incoming => {
+      setMessages(prev => {
+        // if this matches a temp-ID placeholder, replace it
+        const idx = prev.findIndex(
+          m => m.id.startsWith('temp-') && m.content === incoming.content
+        );
+        if (idx !== -1) {
+          const copy = [...prev];
+          copy[idx] = incoming;
+          return copy;
+        }
+        // otherwise append
+        return [...prev, incoming];
+      });
     };
+
     socket.on('message:receive', handler);
+    // <-- note: no socket.disconnect() here, we only off() on unmount
     return () => {
       socket.off('message:receive', handler);
-      socket.disconnect?.();
     };
-  }, [selectedUserId, token, user.id]);
+  }, [token, user.id]);
 
-  // 6) Send handler → optimistic UI + scroll via layout-effect
+  // 5) Send handler – keep optimistic placeholder
   const handleSend = () => {
     const content = newContent.trim();
     if (!content) return;
+
     const optimistic = {
       id: `temp-${Date.now()}`,
       senderId: user.id,
@@ -153,7 +153,6 @@ export default function Chat({ selectedUserId }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* Messages */}
       <div
         ref={containerRef}
         style={{
@@ -162,8 +161,7 @@ export default function Chat({ selectedUserId }) {
           padding: 16,
           display: 'flex',
           flexDirection: 'column',
-          gap: 8,
-          position: 'relative'
+          gap: 8
         }}
       >
         {loadingOlder && (
@@ -175,8 +173,6 @@ export default function Chat({ selectedUserId }) {
           <Message key={m.id} message={m} currentUserId={user.id} />
         ))}
       </div>
-
-      {/* Input */}
       <div style={{ display: 'flex', padding: 8, borderTop: '1px solid #ddd' }}>
         <input
           type="text"
@@ -189,8 +185,8 @@ export default function Chat({ selectedUserId }) {
             padding: '8px 12px',
             borderRadius: 20,
             border: '1px solid #ccc',
-            outline: 'none',
             marginRight: 8,
+            outline: 'none'
           }}
         />
         <button
@@ -201,7 +197,7 @@ export default function Chat({ selectedUserId }) {
             border: 'none',
             backgroundColor: '#007bff',
             color: '#fff',
-            cursor: 'pointer',
+            cursor: 'pointer'
           }}
         >
           Send

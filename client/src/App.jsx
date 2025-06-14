@@ -1,17 +1,19 @@
 // client/src/App.jsx
 import { useState, useEffect } from 'react'
-import { useAuth } from './stores/auth'
-import Login    from './pages/Login'
-import Signup   from './pages/Signup'
-import Contacts from './pages/Contacts'
-import Chat     from './pages/Chat'
+import { useAuth }     from './stores/auth'
+import Login           from './pages/Login'
+import Signup          from './pages/Signup'
+import Contacts        from './pages/Contacts'
+import Chat            from './pages/Chat'
 
 export default function App() {
   const { user, logout, initializing } = useAuth()
   const [selectedUserId, setSelected] = useState(null)
-  const [mode, setMode]               = useState('login') // 'login' or 'signup'
+  const [mode, setMode]               = useState('login')    // 'login' or 'signup'
+  const [isMobile, setIsMobile]       = useState(false)
+  const [drawerOpen, setDrawerOpen]   = useState(false)
 
-  // 0) Reset body styles so we control background & text color
+  // 0) Reset body styles
   useEffect(() => {
     document.body.style.margin = '0'
     document.body.style.padding = '0'
@@ -19,7 +21,15 @@ export default function App() {
     document.body.style.color = '#000'
   }, [])
 
-  // Full-screen flex container
+  // 1) Track viewport width
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth <= 768)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
+
+  // shared outer container
   const outerStyle = {
     position: 'absolute',
     top: 0, left: 0, right: 0, bottom: 0,
@@ -30,7 +40,7 @@ export default function App() {
     overflow: 'auto',
   }
 
-  // Card for auth forms
+  // card around login/signup
   const authCardStyle = {
     width: '100%',
     maxWidth: 400,
@@ -40,7 +50,7 @@ export default function App() {
     padding: 24,
   }
 
-  // Card for the chat app
+  // card around chat app
   const chatCardStyle = {
     width: '100%',
     maxWidth: 1000,
@@ -50,9 +60,10 @@ export default function App() {
     boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
     overflow: 'hidden',
     display: 'flex',
+    position: 'relative'
   }
 
-  // 1) Show loading while validating session
+  // 2) Show loader while verifying session
   if (initializing) {
     return (
       <div style={outerStyle}>
@@ -63,13 +74,13 @@ export default function App() {
     )
   }
 
-  // 2) Not signed in → show centered login/signup card
+  // 3) Not signed in → centered login/signup
   if (!user) {
     return (
       <div style={outerStyle}>
         <div style={authCardStyle}>
           {mode === 'login'
-            ? <Login onSwitch={setMode} />
+            ? <Login  onSwitch={setMode} />
             : <Signup onSwitch={setMode} />
           }
         </div>
@@ -77,25 +88,27 @@ export default function App() {
     )
   }
 
-  // 3) Signed in → show centered chat card
+  // 4) Signed in → chat card
   return (
     <div style={outerStyle}>
       <div style={chatCardStyle}>
-        {/* Sidebar */}
-        <div
-          style={{
-            maxWidth: '300 px',
-            borderRight: '1px solid #ccc',
-            overflowY: 'auto'
-          }}
-        >
-          <Contacts 
-            onSelect={setSelected}
-            selectedUserId={selectedUserId}
-          />
-        </div>
+        {/* Desktop sidebar */}
+        {!isMobile && (
+          <div
+            style={{
+              maxWidth: '300px',
+              borderRight: '1px solid #ccc',
+              overflowY: 'auto'
+            }}
+          >
+            <Contacts
+              onSelect={id => setSelected(id)}
+              selectedUserId={selectedUserId}
+            />
+          </div>
+        )}
 
-        {/* Main chat area */}
+        {/* Main area */}
         <div
           style={{
             flex: 1,
@@ -110,11 +123,27 @@ export default function App() {
               padding: '12px 16px',
               borderBottom: '1px solid #ddd',
               display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center'
+              alignItems: 'center',
             }}
           >
-            <div>Welcome, {user.username}</div>
+            {/* Mobile menu button */}
+            {isMobile && (
+              <button
+                onClick={() => setDrawerOpen(true)}
+                style={{
+                  fontSize: 24,
+                  marginRight: 12,
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                ☰
+              </button>
+            )}
+
+            <div style={{ flex: 1 }}>Welcome, {user.username}</div>
+
             <button
               onClick={logout}
               style={{
@@ -130,7 +159,7 @@ export default function App() {
             </button>
           </header>
 
-          {/* Either the Chat component or a placeholder */}
+          {/* Chat or placeholder */}
           {selectedUserId ? (
             <div
               style={{
@@ -156,6 +185,45 @@ export default function App() {
             </div>
           )}
         </div>
+
+        {/* Mobile drawer overlay */}
+        {isMobile && drawerOpen && (
+          <>
+            {/* Backdrop */}
+            <div
+              onClick={() => setDrawerOpen(false)}
+              style={{
+                position: 'absolute',
+                top: 0, left: 0, right: 0, bottom: 0,
+                backgroundColor: 'rgba(0,0,0,0.3)',
+                zIndex: 1000
+              }}
+            />
+
+            {/* Drawer panel */}
+            <div
+              style={{
+                position: 'absolute',
+                top: 0, left: 0,
+                width: '80%',
+                maxWidth: 300,
+                height: '100%',
+                backgroundColor: '#fff',
+                boxShadow: '2px 0 8px rgba(0,0,0,0.2)',
+                zIndex: 1001,
+                overflowY: 'auto'
+              }}
+            >
+              <Contacts
+                onSelect={id => {
+                  setSelected(id)
+                  setDrawerOpen(false)
+                }}
+                selectedUserId={selectedUserId}
+              />
+            </div>
+          </>
+        )}
       </div>
     </div>
   )

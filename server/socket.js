@@ -1,4 +1,3 @@
-// server/socket.js
 const { Server } = require('socket.io');
 const db = require('./models');
 const { verifyToken } = require('./helpers/jwt');
@@ -24,20 +23,25 @@ function setupSockets(server) {
   // 2) Handle connections and messaging
   io.on('connection', (socket) => {
     console.log(`🔌 User connected: ${socket.userId}`);
+    // join a “room” named after your user ID
     socket.join(socket.userId);
 
     socket.on('message:send', async ({ to, content }) => {
       try {
-        // Persist
+        // Persist in DB first
         const message = await db.Message.create({
           senderId: socket.userId,
           receiverId: to,
           content,
         });
-        // Emit to recipient
+
+        // Emit to the recipient’s room
         io.to(to).emit('message:receive', message);
+        // Also emit to the sender’s room (so sender gets the DB-backed message too)
+        io.to(socket.userId).emit('message:receive', message);
       } catch (err) {
         console.error('❌ message:send error', err);
+        // optionally you could emit an error event back to the sender here
       }
     });
 
