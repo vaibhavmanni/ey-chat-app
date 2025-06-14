@@ -84,12 +84,15 @@ export default function App() {
         {/* Sidebar */}
         <div
           style={{
-            maxWidth: 300,
+            maxWidth: '300 px',
             borderRight: '1px solid #ccc',
             overflowY: 'auto'
           }}
         >
-          <Contacts onSelect={setSelected}/>
+          <Contacts 
+            onSelect={setSelected}
+            selectedUserId={selectedUserId}
+          />
         </div>
 
         {/* Main chat area */}

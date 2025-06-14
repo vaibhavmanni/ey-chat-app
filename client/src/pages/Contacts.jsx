@@ -3,32 +3,29 @@ import { useEffect, useState } from 'react';
 import api from '../api/axios';
 import { useAuth } from '../stores/auth';
 
-export default function Contacts({ onSelect }) {
+export default function Contacts({ onSelect, selectedUserId }) {
   const { user } = useAuth();
   const [list, setList] = useState([]);
-  const [hoveredId, setHoveredId] = useState(null);
 
   useEffect(() => {
     api.get('/users').then(r => {
-      // exclude yourself
       setList(r.data.filter(u => u.id !== user.id));
     });
   }, [user]);
 
   const containerStyle = {
-    height: '100%',
-    overflowY: 'auto',
+    height: '100%',        // fill parent height (the chat-card sidebar)
+    overflowY: 'auto',     // enable scrollbar when needed
     backgroundColor: '#fff'
   };
 
-  const itemStyle = (isHovered) => ({
+  const itemBase = {
     display: 'flex',
     alignItems: 'center',
     padding: '8px 12px',
     cursor: 'pointer',
-    backgroundColor: isHovered ? '#f5f5f5' : 'transparent',
     transition: 'background-color 0.2s',
-  });
+  };
 
   const avatarStyle = {
     width: 40,
@@ -54,20 +51,23 @@ export default function Contacts({ onSelect }) {
   return (
     <div style={containerStyle}>
       {list.map(u => {
-        const initials = `${u.firstName[0] || ''}${u.lastName[0] || ''}`;
-        const isHovered = hoveredId === u.id;
+        const initials = `${u.firstName[0] || ''}${u.lastName[0] || ''}`.toUpperCase();
+        const isSelected = u.id === selectedUserId;
 
         return (
           <div
             key={u.id}
-            style={itemStyle(isHovered)}
-            onMouseEnter={() => setHoveredId(u.id)}
-            onMouseLeave={() => setHoveredId(null)}
             onClick={() => onSelect(u.id)}
+            style={{
+              ...itemBase,
+              backgroundColor: isSelected
+                ? '#e3f2fd'       // light-blue highlight for the active chat
+                : 'transparent'
+            }}
+            onMouseEnter={e => e.currentTarget.style.backgroundColor = isSelected ? '#e3f2fd' : '#f5f5f5'}
+            onMouseLeave={e => e.currentTarget.style.backgroundColor = isSelected ? '#e3f2fd' : 'transparent'}
           >
-            <div style={avatarStyle}>
-              {initials}
-            </div>
+            <div style={avatarStyle}>{initials}</div>
             <div style={nameStyle}>
               {u.firstName} {u.lastName}
             </div>
