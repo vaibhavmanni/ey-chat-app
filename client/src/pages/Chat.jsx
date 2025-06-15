@@ -11,7 +11,7 @@ import { initSocket, sendMessage } from '../api/socket';
 import { useAuth } from '../stores/auth';
 import Message from '../components/Message';
 
-const PAGE_SIZE = 30;
+const PAGE_SIZE = 50;
 
 export default function Chat({ selectedUserId }) {
   const { user, token } = useAuth();
