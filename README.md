@@ -9,7 +9,7 @@ A simple one-to-one chat application built with React, Socket.IO, Express, Seque
 - **Docker & Docker Compose**  
 - **Node.js** (v16+ recommended)  
 - **npm** (bundled with Node.js)  
-- **OpenSSL** (for generating self-signed certificates)
+- **mkcert** (for generating trusted local SSL certificates)
 
 ---
 
@@ -54,14 +54,14 @@ npm install
 ```
 
 #### 2.1 Generate SSL certificates
-
+First, install your local CA into the system trust store:
+```bash
+mkcert -install
+```
+Then create the SSL certificates:
 ```bash
 mkdir -p ssl
-openssl req -x509 -newkey rsa:2048 -nodes \
-  -keyout ssl/key.pem \
-  -out ssl/cert.pem \
-  -days 365 \
-  -subj "/CN=localhost"
+mkcert -key-file ssl/key.pem -cert-file ssl/cert.pem localhost 127.0.0.1
 ```
 
 #### 2.2 Run in development
