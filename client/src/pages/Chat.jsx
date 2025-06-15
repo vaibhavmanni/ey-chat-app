@@ -26,7 +26,7 @@ export default function Chat({ selectedUserId }) {
   const prevLengthRef = useRef(0);
   const isPrependingRef = useRef(false);
 
-  // 0) block until ready
+  // block until we know who’s chatting
   if (!user || !selectedUserId) {
     return <div style={{ padding: 16 }}>Loading chat…</div>;
   }
@@ -36,16 +36,11 @@ export default function Chat({ selectedUserId }) {
     const c = containerRef.current;
     if (!c) return;
 
-    // on first load, jump to bottom
-    if (firstLoadRef.current && messages.length > 0) {
+    if (firstLoadRef.current && messages.length) {
       c.scrollTop = c.scrollHeight;
       firstLoadRef.current = false;
-
-      // after prepending older: we've already restored in loadOlder, just clear flag
     } else if (isPrependingRef.current) {
       isPrependingRef.current = false;
-
-      // new message appended: scroll to bottom
     } else if (messages.length > prevLengthRef.current) {
       c.scrollTop = c.scrollHeight;
     }
@@ -53,10 +48,10 @@ export default function Chat({ selectedUserId }) {
     prevLengthRef.current = messages.length;
   }, [messages]);
 
-  // initial fetch
+  // initial load
   useEffect(() => {
     let cancelled = false;
-    async function fetchRecent() {
+    (async () => {
       const res = await api.get(`/conversations/${selectedUserId}`, {
         params: { limit: PAGE_SIZE }
       });
@@ -64,12 +59,11 @@ export default function Chat({ selectedUserId }) {
       setMessages(res.data);
       setHasMore(res.data.length === PAGE_SIZE);
       firstLoadRef.current = true;
-    }
-    fetchRecent();
+    })();
     return () => { cancelled = true; };
   }, [selectedUserId]);
 
-  // load older on scroll-to-top
+  // load older when scrolled to top
   const loadOlder = useCallback(async () => {
     if (!hasMore || loadingOlder || messages.length === 0) return;
     const c = containerRef.current;
@@ -86,11 +80,9 @@ export default function Chat({ selectedUserId }) {
           limit: PAGE_SIZE
         }
       });
-
       setMessages(prev => [...res.data, ...prev]);
       setHasMore(res.data.length === PAGE_SIZE);
 
-      // after DOM updates, restore scroll so you stay at the same spot
       requestAnimationFrame(() => {
         const newHeight = c.scrollHeight;
         c.scrollTop = newHeight - prevHeight + prevTop;
@@ -107,7 +99,6 @@ export default function Chat({ selectedUserId }) {
     const socket = initSocket(token);
     const handler = incoming => {
       setMessages(prev => {
-        // replace optimistic if exists
         const idx = prev.findIndex(
           m => m.id.startsWith('temp-') && m.content === incoming.content
         );
@@ -123,7 +114,7 @@ export default function Chat({ selectedUserId }) {
     return () => socket.off('message:receive', handler);
   }, [token]);
 
-  // send message
+  // send new message
   const handleSend = () => {
     const content = newContent.trim();
     if (!content) return;
@@ -140,7 +131,13 @@ export default function Chat({ selectedUserId }) {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div style={{
+      flex: 1,
+      display: 'flex',
+      flexDirection: 'column',
+      overflow: 'hidden'
+    }}>
+      {/* only this scrolls */}
       <MessageList
         ref={containerRef}
         messages={messages}
@@ -148,7 +145,14 @@ export default function Chat({ selectedUserId }) {
         loadingOlder={loadingOlder}
         onScrollTop={loadOlder}
       />
-      <div style={{ display: 'flex', padding: 8, borderTop: '1px solid #ddd' }}>
+
+      {/* fixed at bottom */}
+      <div style={{
+        display: 'flex',
+        padding: 8,
+        borderTop: '1px solid #ddd',
+        backgroundColor: '#fafafa'
+      }}>
         <Input
           type="text"
           value={newContent}

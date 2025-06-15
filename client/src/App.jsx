@@ -8,11 +8,12 @@ import Header from './components/molecules/Header';
 
 export default function App() {
   const { user, logout, initializing } = useAuth();
-  const [selectedUserId, setSelected] = useState(null);
+  const [selectedUser, setSelectedUser] = useState(null);
   const [mode, setMode] = useState('login');
   const [isMobile, setIsMobile] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
+  // global page styles
   useEffect(() => {
     Object.assign(document.body.style, {
       margin: 0,
@@ -22,6 +23,7 @@ export default function App() {
     });
   }, []);
 
+  // detect mobile
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth <= 768);
     check();
@@ -35,29 +37,29 @@ export default function App() {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#f0f2f5',
     overflow: 'auto',
+    backgroundColor: '#f0f2f5'
   };
 
   const authCardStyle = {
-    width: '100%',
     maxWidth: 400,
+    width: '100%',
     backgroundColor: '#fff',
     borderRadius: 8,
     boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-    padding: 24,
+    padding: 24
   };
 
   const chatCardStyle = {
-    width: '100%',
     maxWidth: 1000,
+    width: '100%',
     height: '90vh',
     backgroundColor: '#fff',
     borderRadius: 8,
     boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
     overflow: 'hidden',
     display: 'flex',
-    position: 'relative',
+    position: 'relative'
   };
 
   if (initializing) {
@@ -70,13 +72,14 @@ export default function App() {
     );
   }
 
+  // not logged in?
   if (!user) {
     return (
       <div style={outerStyle}>
         <div style={authCardStyle}>
           {mode === 'login'
-            ? <Login onSwitch={setMode} />
-            : <Signup onSwitch={setMode} />}
+            ? <Login onSwitch={setMode}/>
+            : <Signup onSwitch={setMode}/>}
         </div>
       </div>
     );
@@ -85,48 +88,60 @@ export default function App() {
   return (
     <div style={outerStyle}>
       <div style={chatCardStyle}>
-        {/* Desktop sidebar */}
+        {/* desktop sidebar */}
         {!isMobile && (
-          <div style={{ maxWidth: '300px', borderRight: '1px solid #ccc', overflowY: 'auto' }}>
-            <Contacts onSelect={setSelected} selectedUserId={selectedUserId} />
+          <div style={{ width: 300, borderRight: '1px solid #ccc' }}>
+            <Contacts
+              onSelect={setSelectedUser}
+              selectedUser={selectedUser}
+            />
           </div>
         )}
 
-        {/* Main area */}
+        {/* main area */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
           <Header
             isMobile={isMobile}
             onMenuClick={() => setDrawerOpen(true)}
-            username={user.username}
+            chatUserName={selectedUser ? `${selectedUser.firstName} ${selectedUser.lastName}` : ''}
+            loggedInUserName={user.username}
+            loggedInUserFullName={`${user.firstName} ${user.lastName}`}
             onLogout={logout}
           />
 
-          {selectedUserId ? (
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-              <Chat selectedUserId={selectedUserId} />
-            </div>
+          {selectedUser ? (
+            <Chat selectedUserId={selectedUser.id}/>
           ) : (
-            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666' }}>
-              Select a user to chat.
+            <div style={{
+              flex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#666'
+            }}>
+              Select someone to chat with
             </div>
           )}
         </div>
 
-        {/* Mobile drawer */}
+        {/* mobile drawer */}
         {isMobile && drawerOpen && (
           <>
             <div
               onClick={() => setDrawerOpen(false)}
               style={{
-                position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-                backgroundColor: 'rgba(0,0,0,0.3)', zIndex: 1000
+                position: 'absolute',
+                inset: 0,
+                backgroundColor: 'rgba(0,0,0,0.3)',
+                zIndex: 1000
               }}
             />
             <div
               style={{
                 position: 'absolute',
                 top: 0, left: 0,
-                width: '80%', maxWidth: 300,
+                width: '80%',
+                maxWidth: 300,
                 height: '100%',
                 backgroundColor: '#fff',
                 boxShadow: '2px 0 8px rgba(0,0,0,0.2)',
@@ -135,11 +150,11 @@ export default function App() {
               }}
             >
               <Contacts
-                onSelect={id => {
-                  setSelected(id);
+                onSelect={u => {
+                  setSelectedUser(u);
                   setDrawerOpen(false);
                 }}
-                selectedUserId={selectedUserId}
+                selectedUser={selectedUser}
               />
             </div>
           </>

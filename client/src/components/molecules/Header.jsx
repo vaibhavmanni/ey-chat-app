@@ -1,6 +1,14 @@
+import Avatar from '../atoms/Avatar';
 import Button from '../atoms/Button';
 
-export default function Header({ isMobile, onMenuClick, username, onLogout, style }) {
+export default function Header({
+  isMobile,
+  onMenuClick,
+  chatUserName,
+  loggedInUserFullName,
+  onLogout,
+  style
+}) {
   return (
     <header
       style={{
@@ -20,14 +28,32 @@ export default function Header({ isMobile, onMenuClick, username, onLogout, styl
             background: 'none',
             border: 'none',
             cursor: 'pointer',
-            color: 'black',
           }}
         >
           ☰
         </button>
       )}
-      <div style={{ flex: 1 }}>{`Welcome, ${username}`}</div>
-      <Button onClick={onLogout} style={{backgroundColor: 'hsl(0, 100.00%, 26.90%)'}}>Sign Out</Button>
+
+      {/* center: current chat partner */}
+      <div style={{
+        flex: 1,
+        textAlign: 'center',
+        fontWeight: '500',
+        fontSize: '1.1rem',
+        color: '#333'
+      }}>
+        {chatUserName || 'Select a chat'}
+      </div>
+
+      {/* your own avatar + sign out */}
+      <div style={{ display: 'flex', alignItems: 'center' }}>
+        <div title={loggedInUserFullName} style={{ marginRight: '0.25rem' }}>
+          <Avatar name={loggedInUserFullName} size={32} />
+        </div>
+        <Button onClick={onLogout} style={{ padding: '6px 12px', fontSize: '0.9rem', backgroundColor: 'rgb(146, 0, 0)' }}>
+          Sign Out
+        </Button>
+      </div>
     </header>
   );
 }
