@@ -7,7 +7,7 @@ function setupSockets(server) {
     cors: { origin: process.env.CLIENT_URL, methods: ['GET','POST'], credentials: true }
   });
 
-  // 1) Authenticate on handshake
+  // Authenticate on handshake
   io.use((socket, next) => {
     const token = socket.handshake.auth.token;
     if (!token) return next(new Error('Authentication error'));
@@ -20,10 +20,9 @@ function setupSockets(server) {
     }
   });
 
-  // 2) Handle connections and messaging
+  // Handle connections and messaging
   io.on('connection', (socket) => {
-    console.log(`🔌 User connected: ${socket.userId}`);
-    // join a “room” named after your user ID
+    console.log(`User connected: ${socket.userId}`);
     socket.join(socket.userId);
 
     socket.on('message:send', async ({ to, content }) => {
@@ -40,13 +39,12 @@ function setupSockets(server) {
         // Also emit to the sender’s room (so sender gets the DB-backed message too)
         io.to(socket.userId).emit('message:receive', message);
       } catch (err) {
-        console.error('❌ message:send error', err);
-        // optionally you could emit an error event back to the sender here
+        console.error('message:send error', err);
       }
     });
 
     socket.on('disconnect', () => {
-      console.log(`❌ User disconnected: ${socket.userId}`);
+      console.log(`User disconnected: ${socket.userId}`);
     });
   });
 }

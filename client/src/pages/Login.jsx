@@ -19,7 +19,8 @@ export default function Login({ onSwitch }) {
     try {
       const res = await api.post('/auth/login', { username, password });
       await login(res.data.token);
-    } catch {
+    } catch(error) {
+      console.log(error)
       setError('Invalid credentials.');
     }
   };

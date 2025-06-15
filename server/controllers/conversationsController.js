@@ -1,4 +1,3 @@
-// server/controllers/conversationsController.js
 const { Op } = require('sequelize');
 const { Message } = require('../models');
 const { validateUUID } = require('../helpers/validation');

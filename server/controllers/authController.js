@@ -1,4 +1,3 @@
-// server/controllers/authController.js
 const bcrypt = require('bcrypt');
 const { User } = require('../models');
 const { validateRegister, validateLogin } = require('../helpers/validation');

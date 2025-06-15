@@ -1,4 +1,3 @@
-// server/index.js
 require('dotenv').config();
 const fs    = require('fs');
 const http  = require('http');
@@ -16,9 +15,9 @@ async function start() {
   // 1) DB connection
   try {
     await db.sequelize.authenticate();
-    console.log('✅ Database connected');
+    console.log('Database connected');
   } catch (err) {
-    console.error('❌ DB connection failed:', err);
+    console.error('DB connection failed:', err);
     process.exit(1);
   }
 
