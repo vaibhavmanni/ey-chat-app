@@ -1,7 +1,7 @@
 # root
 node_modules/
 dist/
-.env*
+.env
 client/node_modules/
 server/node_modules/
 db-data/
