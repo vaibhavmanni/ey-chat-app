@@ -1,5 +1,3 @@
-import React from 'react';
-
 export default function MessageBubble({ message, currentUserId, style, ...props }) {
   const isSent = message.senderId === currentUserId;
   return (

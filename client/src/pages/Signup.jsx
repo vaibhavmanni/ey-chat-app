@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import api from '../api/axios';
 import { useAuth } from '../stores/auth';
 import Input from '../components/atoms/Input';

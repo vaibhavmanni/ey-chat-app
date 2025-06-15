@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import api from '../api/axios';
 import { useAuth } from '../stores/auth';
 import SideBar from '../components/molecules/SideBar';

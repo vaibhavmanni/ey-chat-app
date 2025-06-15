@@ -1,5 +1,4 @@
-// src/pages/Chat.jsx
-import React, {
+import {
   useState,
   useEffect,
   useRef,
@@ -42,11 +41,11 @@ export default function Chat({ selectedUserId }) {
       c.scrollTop = c.scrollHeight;
       firstLoadRef.current = false;
 
-    // after prepending older: we've already restored in loadOlder, just clear flag
+      // after prepending older: we've already restored in loadOlder, just clear flag
     } else if (isPrependingRef.current) {
       isPrependingRef.current = false;
 
-    // new message appended: scroll to bottom
+      // new message appended: scroll to bottom
     } else if (messages.length > prevLengthRef.current) {
       c.scrollTop = c.scrollHeight;
     }
