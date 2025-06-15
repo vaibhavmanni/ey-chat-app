@@ -1,7 +1,6 @@
-// server/tests/users.integration.test.js
-
 const request = require('supertest');
-const { createApp, db } = require('../app');
+const { createApp } = require('../app');
+
 
 const app = createApp();
 

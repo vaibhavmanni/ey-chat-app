@@ -1,7 +1,6 @@
-const { db } = require('./app');
+const db = require('./models')
 
 beforeAll(async () => {
-  // ensure test DB is in sync
   await db.sequelize.drop();
   await db.sequelize.sync({ force: true });
 });
