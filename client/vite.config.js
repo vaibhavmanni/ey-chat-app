@@ -10,5 +10,10 @@ export default defineConfig({
       cert: fs.readFileSync('../server/ssl/cert.pem'),
     },
     port: 5173
+  },
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    include: ['src/**/*.{test,spec}.{js,jsx}']
   }
 })
