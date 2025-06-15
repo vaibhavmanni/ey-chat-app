@@ -40,7 +40,7 @@ All commands below assume you're at the project root (`ey-chat-app/`).
 ### 1. Bring up the database
 
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
 This will launch a PostgreSQL container at `localhost:5432` and create `chatapp` (and `chatapp_test`) databases.
