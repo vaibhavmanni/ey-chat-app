@@ -135,7 +135,8 @@ export default function App() {
                   marginRight: 12,
                   background: 'none',
                   border: 'none',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  color: 'black'
                 }}
               >
                 ☰
