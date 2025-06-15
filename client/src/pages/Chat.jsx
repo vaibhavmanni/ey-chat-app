@@ -1,3 +1,4 @@
+// src/pages/Chat.jsx
 import React, {
   useState,
   useEffect,
@@ -24,48 +25,61 @@ export default function Chat({ selectedUserId }) {
   const containerRef = useRef(null);
   const firstLoadRef = useRef(true);
   const prevLengthRef = useRef(0);
+  const isPrependingRef = useRef(false);
 
+  // 0) block until ready
   if (!user || !selectedUserId) {
     return <div style={{ padding: 16 }}>Loading chat…</div>;
   }
 
+  // handle scrolling
   useLayoutEffect(() => {
     const c = containerRef.current;
     if (!c) return;
+
+    // on first load, jump to bottom
     if (firstLoadRef.current && messages.length > 0) {
       c.scrollTop = c.scrollHeight;
       firstLoadRef.current = false;
-    } else if (messages.length > prevLengthRef.current && !loadingOlder) {
+
+    // after prepending older: we've already restored in loadOlder, just clear flag
+    } else if (isPrependingRef.current) {
+      isPrependingRef.current = false;
+
+    // new message appended: scroll to bottom
+    } else if (messages.length > prevLengthRef.current) {
       c.scrollTop = c.scrollHeight;
     }
-    prevLengthRef.current = messages.length;
-  }, [messages, loadingOlder]);
 
+    prevLengthRef.current = messages.length;
+  }, [messages]);
+
+  // initial fetch
   useEffect(() => {
     let cancelled = false;
     async function fetchRecent() {
-      try {
-        const res = await api.get(`/conversations/${selectedUserId}`, {
-          params: { limit: PAGE_SIZE }
-        });
-        if (cancelled) return;
-        setMessages(res.data);
-        setHasMore(res.data.length === PAGE_SIZE);
-        firstLoadRef.current = true;
-      } catch (err) {
-        console.error(err);
-      }
+      const res = await api.get(`/conversations/${selectedUserId}`, {
+        params: { limit: PAGE_SIZE }
+      });
+      if (cancelled) return;
+      setMessages(res.data);
+      setHasMore(res.data.length === PAGE_SIZE);
+      firstLoadRef.current = true;
     }
     fetchRecent();
     return () => { cancelled = true; };
   }, [selectedUserId]);
 
+  // load older on scroll-to-top
   const loadOlder = useCallback(async () => {
     if (!hasMore || loadingOlder || messages.length === 0) return;
-    const container = containerRef.current;
-    const prevHeight = container.scrollHeight;
-    const prevTop = container.scrollTop;
+    const c = containerRef.current;
+    const prevHeight = c.scrollHeight;
+    const prevTop = c.scrollTop;
+
     setLoadingOlder(true);
+    isPrependingRef.current = true;
+
     try {
       const res = await api.get(`/conversations/${selectedUserId}`, {
         params: {
@@ -73,11 +87,14 @@ export default function Chat({ selectedUserId }) {
           limit: PAGE_SIZE
         }
       });
+
       setMessages(prev => [...res.data, ...prev]);
       setHasMore(res.data.length === PAGE_SIZE);
+
+      // after DOM updates, restore scroll so you stay at the same spot
       requestAnimationFrame(() => {
-        const newHeight = container.scrollHeight;
-        container.scrollTop = newHeight - prevHeight + prevTop;
+        const newHeight = c.scrollHeight;
+        c.scrollTop = newHeight - prevHeight + prevTop;
       });
     } catch (err) {
       console.error(err);
@@ -86,10 +103,12 @@ export default function Chat({ selectedUserId }) {
     }
   }, [hasMore, loadingOlder, messages, selectedUserId]);
 
+  // socket receiver
   useEffect(() => {
     const socket = initSocket(token);
     const handler = incoming => {
       setMessages(prev => {
+        // replace optimistic if exists
         const idx = prev.findIndex(
           m => m.id.startsWith('temp-') && m.content === incoming.content
         );
@@ -103,8 +122,9 @@ export default function Chat({ selectedUserId }) {
     };
     socket.on('message:receive', handler);
     return () => socket.off('message:receive', handler);
-  }, [token, user.id]);
+  }, [token]);
 
+  // send message
   const handleSend = () => {
     const content = newContent.trim();
     if (!content) return;
