@@ -1,8 +1,10 @@
 // client/src/pages/Signup.jsx
 import { useState } from 'react'
 import api from '../api/axios'
+import { useAuth } from '../stores/auth'
 
 export default function Signup({ onSwitch }) {
+  const { login } = useAuth()
   const [form, setForm] = useState({
     username: '', password: '',
     firstName: '', lastName: '', email: '',
@@ -29,7 +31,13 @@ export default function Signup({ onSwitch }) {
     if (msg) return setError(msg)
     try {
       await api.post('/auth/register', form)
-      onSwitch('login')
+      // 2) auto-login
+      const loginRes = await api.post('/auth/login', {
+        username: form.username,
+        password: form.password
+      })
+      // 3) store token & redirect
+      await login(loginRes.data.token)
     } catch (err) {
       setError(err.response?.data?.message || 'Registration failed.')
     }
