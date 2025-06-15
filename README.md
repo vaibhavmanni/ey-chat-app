@@ -120,22 +120,73 @@ npm run test
 ### Architecture
 
 ```text
-┌────────┐   HTTPS/WS    ┌────────┐   SQL    ┌───────────┐
-│ Client │ ◀────────── ▶ │ Server │ ◀────── ▶│ Postgres  │  
-│ (React)│               │(Express│          │(Sequelize)│
-└────────┘               │ + WS)  │          └───────────┘
-                         └────────┘
-```
+              ┌─────────┐
+              │ Browser │
+              │ (React) │
+              └─────────┘
+                    │
+    HTTPS/REST (auth, users, conversations)
+       WebSocket (Socket.IO handshake)
+                    |
+                    ▼
+        ┌───────────────────────┐
+        │     API Server        │
+        │  (Node.js + Express)  │
+        │  • REST & WS routes   │
+        │  • JWT auth middleware│
+        │  • Sequelize ORM      │
+        └───────────────────────┘
+                    │
+                    ▼
+        ┌───────────────────────┐
+        │    PostgreSQL DB      │
+        │     (Sequelize)       │
+        │ • Users, Messages     │
+        │ • Migrations & Seeds  │
+        └───────────────────────┘
 
-- REST endpoints for auth, users, conversations
-- WebSocket (Socket.IO) for real-time messaging
+**Transport Layer**
+- All traffic over HTTPS (local certs via mkcert)
+- WebSocket upgrade on the same port for real-time messaging
+
+**REST API**
+- Endpoints under `/auth`, `/users`, `/conversations`
+- JWT tokens issued at login, validated via middleware
+
+**WebSocket (Socket.IO)**
+- Handshake carries the JWT for authentication
+- Private "rooms" by user-ID for one-to-one chat
+
+**Database**
+- PostgreSQL `chatapp` and `chatapp_test`
+- Sequelize models, migrations, and seeds
+- ACID compliance ensures message consistency
+
+**Development Proxy**
+- Vite's dev server proxies `/api` calls to Express via `VITE_API_URL`
+- Fast HMR for React components and automatic server reload on change
 
 ### Tech Rationale
 
-- **Sequelize**: familiar data-access layer, migrations & models
-- **React (Vite)**: fast HMR, minimal config
-- **Socket.IO**: simple rooms & real-time events
-- **Docker**: uniform local environment
+**PostgreSQL + Docker**
+- ACID compliance ensures reliable message delivery and data consistency
+- Docker provides consistent development environment and easy deployment
+
+**React + Vite**
+- Fast development with hot module replacement
+- Component-based architecture ideal for chat UI patterns
+
+**Express.js**
+- Minimal framework with excellent Socket.IO integration
+- Mature ecosystem for authentication and middleware
+
+**Socket.IO**
+- Built-in room management for private conversations
+- Automatic fallback (WebSocket → polling) ensures reliable real-time communication
+
+**Sequelize**
+- Database migrations and relationship modeling
+- Built-in validation and SQL injection protection
 
 ### Assumptions
 
